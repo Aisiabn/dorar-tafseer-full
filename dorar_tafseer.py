@@ -6,8 +6,6 @@ import os
 import traceback
 
 
-import os
-
 BASE    = "https://dorar.net"
 INDEX   = "https://dorar.net/tafseer"
 DELAY   = 1.0
@@ -147,8 +145,9 @@ def extract_content(html):
     ]:
         for tag in soup.find_all(True, class_=pat):
             tag.decompose()
-    for tag in soup.find_all("div", id=re.compile(r"^collapse")):
-        tag.decompose()
+
+    # ✅ إصلاح ①: حُذف سطرا decompose لـ collapse divs
+    # كانت تحذف العناوين الجانبية الوسيطة المخزنة داخل accordion
 
     block = None
     card  = soup.find("div", class_="card-body")
@@ -191,7 +190,7 @@ def extract_content(html):
             for h in art.find_all(f"h{i}"):
                 h.replace_with(f"\n{'#' * (i + 2)} {h.get_text(strip=True)}\n")
 
-        # الحواشي — نعالج الأقواس داخل كل حاشية قبل استخراج نصها
+        # الحواشي
         for fn_tag in art.find_all("span", class_="tip"):
             for inner in fn_tag.find_all("span", class_="aaya"):
                 inner.replace_with(f"﴿{inner.get_text(strip=True)}﴾")
@@ -203,19 +202,21 @@ def extract_content(html):
                 fn_tag.replace_with(f" [^{fn_counter}]")
                 fn_counter += 1
 
-        # <br> → مسافة
+        # ✅ إصلاح ②: <br> → سطر جديد بدلاً من مسافة
         for br in art.find_all("br"):
-            br.replace_with(" ")
+            br.replace_with("\n")
 
-        # نضع فواصل صريحة حول كل <p> ثم نسحب النص الكامل
-        # (يحفظ العناوين المحوّلة إلى نصوص + يفصل الفقرات)
         for p in art.find_all("p"):
             p.insert_before("\n\n")
             p.insert_after("\n\n")
 
-        text = art.get_text(separator="", strip=False)
-        text = re.sub(r'[ \t]+', ' ', text)       # مسافات متعددة → واحدة
-        text = re.sub(r'\n{3,}', '\n\n', text)    # أسطر فارغة زائدة
+        # ✅ إصلاح ②: separator="\n" يفصل العناصر Block بشكل صحيح
+        text = art.get_text(separator="\n", strip=False)
+        text = re.sub(r'[ \t]+', ' ', text)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        # دمج كسرات الأسطر داخل نفس الفقرة (inline elements كـ span عادية)
+        text = re.sub(r'(?<!\n)\n(?![\n#>﴿«])', ' ', text)
+        text = re.sub(r'\n{3,}', '\n\n', text)
         text = text.strip()
 
         if text:
@@ -250,13 +251,16 @@ def save_markdown(surah_title, surah_num, intro, sections):
             if m:
                 local_map[m.group(1)] = str(global_fn)
                 global_fn += 1
+        # ✅ إصلاح ③: (?!\d) يمنع مطابقة [^10] عند البحث عن [^1]
         for loc, gbl in local_map.items():
-            text = re.sub(rf'\[\^{loc}\]', f'[^{gbl}]', text)
+            text = re.sub(rf'\[\^{re.escape(loc)}\](?!\d)', f'[^{gbl}]', text)
         new_fns = []
         for fn in fns:
             m = re.match(r'\[\^(\d+)\]:(.*)', fn, re.DOTALL)
             if m:
-                new_fns.append(f"[^{local_map.get(m.group(1), m.group(1))}]:{m.group(2)}")
+                new_fns.append(
+                    f"[^{local_map.get(m.group(1), m.group(1))}]:{m.group(2)}"
+                )
         return text, new_fns
 
     # تعريف السورة
