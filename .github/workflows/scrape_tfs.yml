@@ -13,10 +13,10 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -r requirements.txt
-      - run: python Scraper_rfs_114.py
-      - run: zip -r output_rfs.zip dorar_tafseer/
+      - run: python Scraper_tfs_114.py
+      - run: zip -r output_tfs.zip dorar_tafseer/
       - uses: actions/upload-artifact@v4
         with:
-          name: output-rfs
-          path: output_rfs.zip
+          name: output-tfs
+          path: output_tfs.zip
           retention-days: 7
