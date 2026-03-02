@@ -1,57 +1,63 @@
 """
-diag_footnotes.py
------------------
-يكشف الحاشية المسببة للاندماج بعد رقم 297
+fix_multiline_footnotes.py
+--------------------------
+يدمج كل حاشية متعددة الأسطر في سطر واحد
+لمنع انكسار بلوك الحواشي في Markdown
 """
-import re, sys
+import re, sys, pathlib
 
-path = sys.argv[1] if len(sys.argv) > 1 else "006_سُورةُ_الأنعامِ.md"
-text = open(path, encoding="utf-8").read()
+def fix_file(text: str) -> str:
+    lines = text.splitlines()
+    result = []
+    i = 0
+    fn_def = re.compile(r'^\[\^\d+\]:')
 
-# استخرج كل تعريفات الحواشي مع موضعها وأول سطر بعدها
-def_pattern = re.compile(r'^\[\^(\d+)\]:(.+)', re.MULTILINE)
-matches = list(def_pattern.finditer(text))
+    while i < len(lines):
+        line = lines[i]
+        if fn_def.match(line):
+            # ابدأ تجميع الحاشية
+            parts = [line.rstrip()]
+            i += 1
+            # أضف الأسطر التالية التي هي امتداد (غير فارغة وغير حاشية جديدة)
+            while i < len(lines):
+                nxt = lines[i]
+                if nxt == '' or fn_def.match(nxt):
+                    break
+                # سطر امتداد — أدمجه
+                parts.append(nxt.strip())
+                i += 1
+            # ادمج في سطر واحد
+            result.append(' '.join(p for p in parts if p))
+        else:
+            result.append(line)
+            i += 1
 
-print(f"إجمالي تعريفات الحواشي: {len(matches)}\n")
+    return '\n'.join(result)
 
-# ابحث عن الحاشية التي يتبعها سطر مُندَج (يبدأ بمسافة)
-continuation = re.compile(r'^\s+\S')  # سطر يبدأ بمسافة ثم محتوى
 
-problem_count = 0
-for i, m in enumerate(matches):
-    num = m.group(1)
-    # الموضع في النص مباشرة بعد هذا التعريف
-    end = m.end()
-    # السطر التالي
-    rest = text[end:]
-    next_line_match = re.match(r'\n(.+)', rest)
-    if next_line_match:
-        next_line = next_line_match.group(1)
-        # هل السطر التالي ليس تعريف حاشية جديدة وليس فارغاً؟
-        if next_line.strip() and not next_line.startswith('[^'):
-            # هذا سطر امتداد — عادي
-            pass
-    
-    # الأهم: هل هذه الحاشية نفسها تبدأ بمسافة؟
-    # (بمعنى هل [^N]: جاء بعد indent؟)
-    line_start = text.rfind('\n', 0, m.start()) + 1
-    prefix = text[line_start:m.start()]
-    if prefix.strip() == '' and prefix != '':
-        print(f"⚠️  حاشية [^{num}] (السطر ~{text[:m.start()].count(chr(10))+1}) تبدأ بمسافة: {repr(prefix)}")
-        problem_count += 1
+def main():
+    if len(sys.argv) < 2:
+        # عالج كل ملفات md في المجلد الحالي
+        paths = list(pathlib.Path('.').glob('*.md'))
+    else:
+        paths = [pathlib.Path(p) for p in sys.argv[1:]]
 
-print()
+    for path in paths:
+        if path.name.lower() == 'readme.md':
+            continue
+        original = path.read_text(encoding='utf-8')
+        fixed = fix_file(original)
+        if fixed != original:
+            path.write_text(fixed, encoding='utf-8')
+            # احسب عدد الحواشي المدمجة
+            merged = sum(
+                1 for o, f in zip(original.splitlines(), fixed.splitlines())
+                if o != f and re.match(r'^\[\^\d+\]:', f)
+            )
+            print(f"✅ {path.name}: أُصلح {merged} حاشية متعددة الأسطر")
+        else:
+            print(f"➖ {path.name}: لا تغيير")
 
-# طريقة أخرى: احسب الفجوات في تسلسل الأرقام
-nums = [int(m.group(1)) for m in matches]
-print("أول 10 أرقام حواشي:", nums[:10])
-print("آخر 10 أرقام:", nums[-10:])
-print(f"\nإجمالي المشاكل الأولية: {problem_count}")
 
-# اطبع الحاشية رقم 295-300 للفحص البصري
-print("\n--- محتوى الحواشي 295-302 ---")
-for m in matches:
-    n = int(m.group(1))
-    if 295 <= n <= 302:
-        line_no = text[:m.start()].count('\n') + 1
-        print(f"[^{n}] (سطر {line_no}): {repr(m.group(0)[:80])}")
+if __name__ == '__main__':
+    main()
