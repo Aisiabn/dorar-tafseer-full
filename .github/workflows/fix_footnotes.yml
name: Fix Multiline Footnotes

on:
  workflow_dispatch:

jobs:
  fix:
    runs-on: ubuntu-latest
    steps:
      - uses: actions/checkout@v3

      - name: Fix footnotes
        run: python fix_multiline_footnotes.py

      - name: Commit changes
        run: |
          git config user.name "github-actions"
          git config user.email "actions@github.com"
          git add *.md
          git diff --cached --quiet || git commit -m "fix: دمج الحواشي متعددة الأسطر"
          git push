@@ -1,0 +1,22 @@
+# .github/workflows/fix_footnotes.yml
+name: Fix Multiline Footnotes
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Fix footnotes
+        run: python fix_multiline_footnotes.py
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add *.md
+          git diff --cached --quiet || git commit -m "fix: دمج الحواشي متعددة الأسطر"
+          git push
