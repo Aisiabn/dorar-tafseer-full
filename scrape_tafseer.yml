@@ -1,0 +1,33 @@
+name: Scrape Tafseer
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_surahs:
+        description: 'عدد السور للاختبار (اتركه فارغاً للكل)'
+        required: false
+        default: ''
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Run scraper
+        env:
+          TEST_SURAHS: ${{ github.event.inputs.test_surahs }}
+        run: python scraper.py
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add dorar_tafseer/
+          git diff --cached --quiet || git commit -m "update: تحديث ملفات التفسير"
+          git push
