@@ -1,50 +1,22 @@
-# .github/workflows/diag_footnotes.yml
-name: Diagnose Footnotes
+# .github/workflows/fix_footnotes.yml
+name: Fix Multiline Footnotes
 
 on:
   workflow_dispatch:
 
 jobs:
-  diagnose:
+  fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - name: Run diagnostic
+      - name: Fix footnotes
+        run: python fix_multiline_footnotes.py
+
+      - name: Commit changes
         run: |
-          python - << 'EOF'
-          import re, glob
-
-          # اعثر على ملف الأنعام أو أي ملف md
-          files = sorted(glob.glob("*.md"))
-          if not files:
-              print("لا يوجد ملفات md")
-              exit()
-
-          for path in files[:3]:  # أول 3 ملفات
-              print(f"\n{'='*60}")
-              print(f"الملف: {path}")
-              text = open(path, encoding="utf-8").read()
-
-              def_pattern = re.compile(r'^\[\^(\d+)\]:(.+)', re.MULTILINE)
-              matches = list(def_pattern.finditer(text))
-              print(f"إجمالي تعريفات الحواشي: {len(matches)}")
-
-              nums = [int(m.group(1)) for m in matches]
-              print(f"أول 5 أرقام: {nums[:5]}")
-              print(f"آخر 5 أرقام: {nums[-5:]}")
-
-              # الحواشي 294-305
-              print("\n--- الحواشي 294-305 ---")
-              for m in matches:
-                  n = int(m.group(1))
-                  if 294 <= n <= 305:
-                      line_no = text[:m.start()].count('\n') + 1
-                      # اطبع السطر كاملاً + السطر اللي بعده
-                      line_end = text.find('\n', m.end())
-                      next_line_start = line_end + 1
-                      next_line_end = text.find('\n', next_line_start)
-                      next_line = text[next_line_start:next_line_end]
-                      print(f"  سطر {line_no}: {repr(m.group(0)[:100])}")
-                      print(f"  التالي:      {repr(next_line[:80])}")
-          EOF
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add *.md
+          git diff --cached --quiet || git commit -m "fix: دمج الحواشي متعددة الأسطر"
+          git push
