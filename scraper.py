@@ -136,7 +136,7 @@ def extract_content(html):
         tag.decompose()
     for pat in [
         re.compile(r"\bmodal\b"),
-        re.compile(r"\balert-dorar\b"),
+None        re.compile(r"\balert-dorar\b"),
         re.compile(r"\btitle-manhag\b"),
         re.compile(r"\bdefault-gradient\b"),
         re.compile(r"\bfooter-copyright\b"),
@@ -242,6 +242,7 @@ def extract_content(html):
         text = text.strip()
 
         if text:
+            print(f"  [ART] {len(text)} حرف | أول 60: {text[:60]!r}")
             all_text.append(text)
 
     clean = re.sub(r'\n{3,}', '\n\n', "\n\n".join(all_text)).strip()
