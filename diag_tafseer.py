@@ -4,15 +4,15 @@ diag_tafseer.py
   ① ما الـ block المختار (tab-pane / body)
   ② عدد الـ articles وأحجامها
   ③ النص الموجود خارج الـ articles داخل الـ block
-  ④ أول 400 حرف من كل عنصر مباشر داخل الـ block
+  ④ فحص داخل <section> خارج articles
 """
 
 import requests
 from bs4 import BeautifulSoup
-import re, os
+import re, copy
 
 BASE  = "https://dorar.net"
-URL   = f"{BASE}/tafseer/2"          # غيّره لأي سورة تريدها
+URL   = f"{BASE}/tafseer/2"
 DELAY = 1.5
 
 def make_session():
@@ -32,7 +32,6 @@ def fetch(session, url):
 def diag(html):
     soup = BeautifulSoup(html, "html.parser")
 
-    # ── إزالة العناصر الزخرفية
     for tag in soup.find_all(["nav","header","footer","script","style","form"]):
         tag.decompose()
     for pat in [
@@ -72,24 +71,28 @@ def diag(html):
         print(f"   [{i}] {len(txt)} حرف  |  أول 80: {txt[:80]!r}")
     print()
 
-    # ── النص خارج articles
-    import copy
+    # ── النص خارج articles داخل block
     block_copy = copy.copy(block)
     for art in block_copy.find_all("article"):
         art.decompose()
     outside = block_copy.get_text(strip=True)
-    print(f"── نص خارج articles: {len(outside)} حرف")
+    print(f"── نص خارج articles (كامل block): {len(outside)} حرف")
     if outside:
         print(f"   أول 400: {outside[:400]!r}")
     print()
 
-    # ── العناصر المباشرة داخل block
-    print("── العناصر المباشرة داخل block (أول 10):")
-    direct = [c for c in block.children if hasattr(c, "name") and c.name]
-    for i, el in enumerate(direct[:10], 1):
-        cls = el.get("class", [])
-        txt = el.get_text(strip=True)
-        print(f"   [{i}] <{el.name}> classes={cls}  |  {len(txt)} حرف  |  أول 120: {txt[:120]!r}")
+    # ── فحص داخل <section> خارج articles
+    section = block.find("section")
+    if section:
+        sec_copy = copy.copy(section)
+        for art in sec_copy.find_all("article"):
+            art.decompose()
+        outside_sec = sec_copy.get_text(strip=True)
+        print(f"── نص داخل <section> خارج articles: {len(outside_sec)} حرف")
+        if outside_sec:
+            print(f"   أول 600:\n{outside_sec[:600]!r}")
+    else:
+        print("── لا يوجد <section> داخل block")
 
 if __name__ == "__main__":
     s = make_session()
