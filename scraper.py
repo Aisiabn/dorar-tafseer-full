@@ -177,6 +177,10 @@ def extract_content(html):
     if not block:
         block = soup.find("body") or soup
 
+    # DEBUG — احذفه بعد التشخيص
+    raw_preview = block.get_text(strip=True)[:300]
+    print(f"  [DEBUG block] {raw_preview}")
+
     articles  = block.find_all("article") or [block]
     all_text  = []
     footnotes = []
