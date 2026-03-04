@@ -6,7 +6,7 @@ import os
 import traceback
 
 
-BASE    = "https://dorar.ne
+BASE    = "https://dorar.net"
 INDEX   = "https://dorar.net/tafseer"
 DELAY   = 1.0
 OUT_DIR = "dorar_tafseer"
@@ -195,6 +195,8 @@ def extract_content(html):
             span.replace_with(f"«{span.get_text(strip=True)}»")
         for span in art.find_all("span", class_="title-2"):
             span.replace_with(f"\n#### {span.get_text(strip=True)}\n")
+        for span in art.find_all("span", class_="title-1"):
+            span.replace_with(f"\n##### {span.get_text(strip=True)}\n")
 
         for a in art.find_all("a"):
             if re.search(r"السابق|التالي|الصفحة|المراجع|اعتماد", a.get_text()):
@@ -226,7 +228,8 @@ def extract_content(html):
         text = _TIP_RE.sub(replace_marker, text)
         text = re.sub(r'[ \t]+', ' ', text)
         text = re.sub(r'\n{3,}', '\n\n', text)
-        text = re.sub(r'(?<!\n)\n(?![\n#>﴿«])', ' ', text)
+        # احفظ الأسطر التي تبدأ بأرقام قائمة (1- 2- ...) ولا تدمجها
+        text = re.sub(r'(?<!\n)\n(?![\n#>﴿«\d])', ' ', text)
         text = re.sub(r'\n{3,}', '\n\n', text)
         text = text.strip()
 
