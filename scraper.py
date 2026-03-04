@@ -245,6 +245,7 @@ def extract_content(html):
             all_text.append(text)
 
     clean = re.sub(r'\n{3,}', '\n\n', "\n\n".join(all_text)).strip()
+    print(f"  [DBG] extract_content: {len(clean)} حرف | آخر 200: {clean[-200:]!r}")
     return {"text": clean, "footnotes": footnotes}
 
 
