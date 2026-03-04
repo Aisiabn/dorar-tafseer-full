@@ -136,7 +136,7 @@ def extract_content(html):
         tag.decompose()
     for pat in [
         re.compile(r"\bmodal\b"),
-None        re.compile(r"\balert-dorar\b"),
+        re.compile(r"\balert-dorar\b"),
         re.compile(r"\btitle-manhag\b"),
         re.compile(r"\bdefault-gradient\b"),
         re.compile(r"\bfooter-copyright\b"),
@@ -154,13 +154,11 @@ None        re.compile(r"\balert-dorar\b"),
             if pane.find("article") or len(pane.get_text(strip=True)) > 200:
                 block = pane
                 break
-
         if not block:
             for pane in card.find_all("div", class_="tab-pane"):
                 if pane.find("article"):
                     block = pane
                     break
-
         if not block:
             best, best_len = None, 0
             for pane in card.find_all("div", class_="tab-pane"):
@@ -173,7 +171,7 @@ None        re.compile(r"\balert-dorar\b"),
     if not block:
         block = soup.find("body") or soup
 
-    # ── الإصلاح: إذا الـ block لا يحتوي articles، ابحث في كامل الصفحة
+    # إذا الـ block لا يحتوي articles، ابحث في كامل الصفحة
     articles = block.find_all("article")
     if not articles:
         articles = soup.find_all("article") or [block]
