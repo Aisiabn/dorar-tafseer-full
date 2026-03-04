@@ -180,6 +180,7 @@ def extract_content(html):
     footnotes = []
 
     for art in articles:
+        print(f"  [RAW] {len(art.get_text(strip=True))} حرف | أول 100: {art.get_text(strip=True)[:100]!r}")
 
         # ── 1. استخرج الحواشي أولاً
         tips_map    = {}
@@ -202,6 +203,7 @@ def extract_content(html):
             span.replace_with(f"«{span.get_text(strip=True)}»")
         for span in art.find_all("span", class_="title-2"):
             span.replace_with(f"\n#### {span.get_text(strip=True)}\n")
+        print(f"  [AFTER_T2] {len(art.get_text(strip=True))} حرف")
         for span in art.find_all("span", class_="title-1"):
             span.replace_with(f"\n##### {span.get_text(strip=True)}\n")
 
