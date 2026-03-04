@@ -6,7 +6,7 @@ import os
 import traceback
 
 
-BASE    = "https://dorar.net"
+BASE    = "https://dorar.ne
 INDEX   = "https://dorar.net/tafseer"
 DELAY   = 1.0
 OUT_DIR = "dorar_tafseer"
