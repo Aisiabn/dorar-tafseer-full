@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import re, time, os, traceback
 from ebooklib import epub
 
-BASE      = "https://dorar.net"ب
+BASE      = "https://dorar.net"
 INDEX     = "https://dorar.net/tafseer"
 DELAY     = 1.0
 OUT_DIR   = "dorar_tafseer_epub"
