@@ -1,0 +1,50 @@
+name: Scrape Tafseer EPUB
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_surahs:
+        description: 'عدد السور للاختبار (اتركه فارغاً للكل)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 ebooklib
+
+      - name: Run scraper
+        env:
+          TEST_SURAHS: ${{ github.event.inputs.test_surahs || 'None' }}
+        run: python scraper_epub.py
+
+      - name: Commit results
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          if [ -d "dorar_tafseer_epub" ] && [ "$(ls -A dorar_tafseer_epub)" ]; then
+            git add dorar_tafseer_epub/
+            git diff --cached --quiet || (
+              git commit -m "update: تحديث ملف EPUB"
+              git pull origin main --rebase
+              git push
+            )
+          else
+            echo "⚠️ لا يوجد مخرجات — تحقق من لوج الكود"
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
