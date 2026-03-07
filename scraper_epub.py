@@ -20,30 +20,78 @@ ARABIC_CSS = """
 
 body {
     direction: rtl;
-    text-align: right;
-    font-family: "Amiri", "Traditional Arabic", "Arial", serif;
+    text-align: justify;
+    font-family: "Amiri", "Scheherazade New", "Traditional Arabic", "Arabic Typesetting",
+                 "Dubai", "Segoe UI", "Arial Unicode MS", serif;
     font-size: 1em;
-    line-height: 1.8;
-    margin: 1em 1.5em;
+    line-height: 2.0;
+    margin: 1.2em 1.8em;
     color: #1a1a1a;
 }
 
-h1 { font-size: 1.6em; border-bottom: 2px solid #444; padding-bottom: 0.3em; margin-top: 1em; }
-h2 { font-size: 1.3em; color: #2c2c2c; margin-top: 1.5em; }
-h3 { font-size: 1.1em; color: #3a3a3a; margin-top: 1em; }
-h4 { font-size: 1em; color: #555; margin-top: 0.8em; }
+h1 {
+    font-size: 1.6em;
+    text-align: right;
+    border-bottom: 2px solid #444;
+    padding-bottom: 0.3em;
+    margin-top: 1em;
+}
+h2 { font-size: 1.3em; text-align: right; color: #2c2c2c; margin-top: 1.5em; }
+h3 { font-size: 1.1em; text-align: right; color: #3a3a3a; margin-top: 1em; }
+h4 { font-size: 1em;   text-align: right; color: #555;    margin-top: 0.8em; }
 
-.source { color: #777; font-size: 0.85em; margin-bottom: 1em; }
-.intro-section { background: #f9f7f2; padding: 0.5em 1em; border-right: 3px solid #999; margin: 1em 0; }
+p { margin: 0.6em 0; }
+
+.source { color: #777; font-size: 0.85em; margin-bottom: 1em; text-align: right; }
 .section-title { font-weight: bold; color: #333; }
 hr { border: none; border-top: 1px solid #ccc; margin: 1.5em 0; }
 
-.quran { font-family: "Amiri Quran", "Traditional Arabic", serif; color: #1a4a1a; }
+/* آيات قرآنية */
+.quran {
+    font-family: "Amiri Quran", "KFGQPC Uthmanic Script HAFS", "Scheherazade New",
+                 "Traditional Arabic", serif;
+    color: #1a4a1a;
+}
 
-.footnote-ref { font-size: 0.75em; vertical-align: super; color: #0055aa; text-decoration: none; }
-.footnotes { margin-top: 2em; border-top: 1px solid #ccc; padding-top: 1em; font-size: 0.85em; color: #444; }
-.footnote { margin: 0.4em 0; }
-.footnote-back { color: #0055aa; text-decoration: none; font-size: 0.8em; }
+/* حواشي — الإشارة المرفوعة */
+sup.fn-ref {
+    font-size: 0.72em;
+    line-height: 0;
+    vertical-align: super;
+}
+sup.fn-ref a {
+    color: #0055aa;
+    text-decoration: none;
+    border-bottom: 1px dotted #0055aa;
+}
+sup.fn-ref a:hover { text-decoration: underline; }
+
+/* قسم الحواشي في نهاية الصفحة */
+.footnotes {
+    margin-top: 2.5em;
+    border-top: 2px solid #bbb;
+    padding-top: 1em;
+    font-size: 0.83em;
+    color: #444;
+    text-align: right;
+}
+.footnotes h3 {
+    font-size: 1em;
+    color: #555;
+    margin-bottom: 0.8em;
+}
+.footnote-item {
+    margin: 0.5em 0;
+    padding-right: 0.3em;
+    border-right: 2px solid #ddd;
+}
+.footnote-back {
+    color: #0055aa;
+    text-decoration: none;
+    font-size: 0.85em;
+    margin-right: 0.4em;
+}
+.footnote-back:hover { text-decoration: underline; }
 """
 
 
@@ -234,8 +282,9 @@ def extract_content(html):
             body = _tips.get(tid, '')
             gid  = len(_fns) + 1
             _fns.append((gid, body))
-            return (f'<a class="footnote-ref" id="fnref{gid}" '
-                    f'href="#fn{gid}">[{gid}]</a>')
+            return (f'<sup class="fn-ref">'
+                    f'<a id="fnref{gid}" href="#fn{gid}">[{gid}]</a>'
+                    f'</sup>')
 
         text = _TIP_RE.sub(replace_marker, text)
         text = re.sub(r'[ \t]+', ' ', text)
@@ -274,9 +323,9 @@ def build_page_html(title, source_url, parsed):
         parts.append('<div class="footnotes"><h3>الحواشي</h3>')
         for (fid, body) in footnotes:
             parts.append(
-                f'<p class="footnote" id="fn{fid}">'
-                f'[{fid}] {body} '
-                f'<a class="footnote-back" href="#fnref{fid}">↩</a>'
+                f'<p class="footnote-item" id="fn{fid}">'
+                f'<strong>[{fid}]</strong> {body}'
+                f'<a class="footnote-back" href="#fnref{fid}" title="رجوع">↩</a>'
                 f'</p>'
             )
         parts.append('</div>')
