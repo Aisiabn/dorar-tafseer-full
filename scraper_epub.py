@@ -13,23 +13,9 @@ TEST_SURAHS = None if os.environ.get("TEST_SURAHS") == "None" else (
     int(os.environ["TEST_SURAHS"]) if os.environ.get("TEST_SURAHS") else None
 )
 
-_TIP_RE  = re.compile(r'\x01(\d+)\x01')
-_font_cache: dict[int, bytes] = {}   # page_num → TTF bytes
+_TIP_RE     = re.compile(r'\x01(\d+)\x01')
+_font_cache: dict[int, bytes] = {}
 
-def fetch_qcf_font(session, page_num):
-    """يجلب خط QCF للصفحة ويُخزّنه مؤقتاً."""
-    if page_num in _font_cache:
-        return _font_cache[page_num]
-    url = f"{BASE}/fonts/QCF_P{page_num}.TTF"
-    try:
-        r = session.get(url, timeout=20)
-        if r.status_code == 200:
-            _font_cache[page_num] = r.content
-            print(f"  [FONT] جُلب خط الصفحة {page_num}")
-            return r.content
-    except Exception as e:
-        print(f"  [FONT ERR] {url} — {e}")
-    return None
 
 ARABIC_CSS = """
 @charset "UTF-8";
@@ -45,13 +31,7 @@ body {
     color: #1a1a1a;
 }
 
-h1 {
-    font-size: 1.6em;
-    text-align: right;
-    border-bottom: 2px solid #444;
-    padding-bottom: 0.3em;
-    margin-top: 1em;
-}
+h1 { font-size: 1.6em; text-align: right; border-bottom: 2px solid #444; padding-bottom: 0.3em; margin-top: 1em; }
 h2 { font-size: 1.3em; text-align: right; color: #2c2c2c; margin-top: 1.5em; }
 h3 { font-size: 1.1em; text-align: right; color: #3a3a3a; margin-top: 1em; }
 h4 { font-size: 1em;   text-align: right; color: #555;    margin-top: 0.8em; }
@@ -62,27 +42,24 @@ p { margin: 0.6em 0; }
 .section-title { font-weight: bold; color: #333; }
 hr { border: none; border-top: 1px solid #ccc; margin: 1.5em 0; }
 
-/* آيات قرآنية */
 .quran {
     font-family: "Amiri Quran", "KFGQPC Uthmanic Script HAFS", "Scheherazade New",
                  "Traditional Arabic", serif;
     color: #1a4a1a;
 }
 
-/* حواشي — الإشارة المرفوعة */
-sup.fn-ref {
-    font-size: 0.72em;
-    line-height: 0;
-    vertical-align: super;
+.qpage-block {
+    text-align: justify;
+    direction: rtl;
+    margin: 1em 0;
+    padding: 0.5em;
+    background: #f7f4ef;
+    border-right: 3px solid #6a8a3a;
 }
-sup.fn-ref a {
-    color: #0055aa;
-    text-decoration: none;
-    border-bottom: 1px dotted #0055aa;
-}
-sup.fn-ref a:hover { text-decoration: underline; }
 
-/* قسم الحواشي في نهاية الصفحة */
+sup.fn-ref { font-size: 0.72em; line-height: 0; vertical-align: super; }
+sup.fn-ref a { color: #0055aa; text-decoration: none; border-bottom: 1px dotted #0055aa; }
+
 .footnotes {
     margin-top: 2.5em;
     border-top: 2px solid #bbb;
@@ -91,23 +68,9 @@ sup.fn-ref a:hover { text-decoration: underline; }
     color: #444;
     text-align: right;
 }
-.footnotes h3 {
-    font-size: 1em;
-    color: #555;
-    margin-bottom: 0.8em;
-}
-.footnote-item {
-    margin: 0.5em 0;
-    padding-right: 0.3em;
-    border-right: 2px solid #ddd;
-}
-.footnote-back {
-    color: #0055aa;
-    text-decoration: none;
-    font-size: 0.85em;
-    margin-right: 0.4em;
-}
-.footnote-back:hover { text-decoration: underline; }
+.footnotes h3 { font-size: 1em; color: #555; margin-bottom: 0.8em; }
+.footnote-item { margin: 0.5em 0; padding-right: 0.3em; border-right: 2px solid #ddd; }
+.footnote-back { color: #0055aa; text-decoration: none; font-size: 0.85em; margin-right: 0.4em; }
 """
 
 
@@ -194,45 +157,49 @@ def get_page_title(html):
 
 
 # ══════════════════════════════════════════════
+# خطوط QCF
+# ══════════════════════════════════════════════
+
+def fetch_qcf_font(session, page_num):
+    if page_num in _font_cache:
+        return _font_cache[page_num]
+    url = f"{BASE}/fonts/QCF_P{page_num}.TTF"
+    try:
+        r = session.get(url, timeout=20)
+        if r.status_code == 200:
+            _font_cache[page_num] = r.content
+            print(f"  [FONT] خط الصفحة {page_num}")
+            return r.content
+    except Exception as e:
+        print(f"  [FONT ERR] {url} — {e}")
+    return None
+
+def build_qcf_css(font_pages: set) -> str:
+    lines = []
+    for pnum in sorted(font_pages):
+        lines.append(
+            f'@font-face {{\n'
+            f'  font-family: "QCF_P{pnum}";\n'
+            f'  src: url("../fonts/QCF_P{pnum}.ttf") format("truetype");\n'
+            f'}}\n'
+            f'.qcf-pg{pnum} {{\n'
+            f'  font-family: "QCF_P{pnum}", "Amiri Quran", serif;\n'
+            f'  font-size: 1.6em;\n'
+            f'  line-height: 2.2;\n'
+            f'}}'
+        )
+    return "\n\n".join(lines)
+
+
+# ══════════════════════════════════════════════
 # استخراج المحتوى
 # ══════════════════════════════════════════════
 
-def extract_quran_block(html, session):
-    """
-    يستخرج div#qpage ويُعيد:
-    - html_block : HTML جاهز للإدراج
-    - font_pages : set من أرقام الصفحات المحتاجة
-    """
-    soup = BeautifulSoup(html, "html.parser")
-    qpage = soup.find("div", id="qpage")
-    if not qpage:
-        return "", set()
-
-    font_pages = set()
-    for span in qpage.find_all("span"):
-        sid = span.get("id", "")
-        m = re.match(r"pg(\d+)$", sid)
-        if m:
-            pnum = int(m.group(1))
-            font_pages.add(pnum)
-            # احتفظ بالمحتوى مع class يحمل رقم الصفحة
-            span["class"] = f"qcf-pg{pnum}"
-            del span["id"]
-
-    # أزل style المضمّن وابقِ dir و lang
-    qpage["class"] = "qpage-block"
-    for attr in ("style", "id"):
-        if attr in qpage.attrs:
-            del qpage[attr]
-
-    return str(qpage), font_pages
-
-
-
+def convert_inner_soup(soup_tag):
     for inner in soup_tag.find_all("span", class_="aaya"):
         inner.replace_with(f"﴿{inner.get_text(strip=True)}﴾")
     for inner in soup_tag.find_all("span", class_="hadith"):
-        inner.replace_with(inner.get_text(strip=True))  # ← بدون أقواس
+        inner.replace_with(inner.get_text(strip=True))
     for inner in soup_tag.find_all("span", class_="sora"):
         t = inner.get_text(strip=True)
         if t:
@@ -251,17 +218,11 @@ def get_tip_text(tip):
     result = re.sub(r'\s+', ' ', tip.get_text(strip=True)).strip()
     return _marker.sub('', result).strip()
 
-def extract_quran_block(html, session):
-    """
-    يستخرج div#qpage ويُعيد:
-    - html_block : HTML جاهز للإدراج
-    - font_pages : set من أرقام الصفحات المحتاجة
-    """
+def extract_quran_block(html):
     soup  = BeautifulSoup(html, "html.parser")
     qpage = soup.find("div", id="qpage")
     if not qpage:
         return "", set()
-
     font_pages = set()
     for span in qpage.find_all("span"):
         sid = span.get("id", "")
@@ -271,17 +232,13 @@ def extract_quran_block(html, session):
             font_pages.add(pnum)
             span["class"] = f"qcf-pg{pnum}"
             del span["id"]
-
     qpage["class"] = "qpage-block"
     for attr in ("style", "id"):
         if attr in qpage.attrs:
             del qpage[attr]
-
     return str(qpage), font_pages
 
-
 def extract_content(html):
-    """يُعيد {"text_html": str, "footnotes": [(id, text)]}"""
     soup = BeautifulSoup(html, "html.parser")
 
     for tag in soup.find_all(["nav", "header", "footer", "script", "style", "form"]):
@@ -336,7 +293,7 @@ def extract_content(html):
         for span in art.find_all("span", class_="sora"):
             span.replace_with(f" {span.get_text(strip=True)} ")
         for span in art.find_all("span", class_="hadith"):
-            span.replace_with(span.get_text(strip=True))  # ← بدون أقواس
+            span.replace_with(span.get_text(strip=True))
         for span in art.find_all("span", class_="title-2"):
             span.replace_with(f'<h4>{span.get_text(strip=True)}</h4>')
         for span in art.find_all("span", class_="title-1"):
@@ -382,21 +339,19 @@ def extract_content(html):
 # ══════════════════════════════════════════════
 
 def build_page_html(title, source_url, parsed):
-    """يبني HTML لصفحة مستقلة (تعريف أو مقطع)."""
     parts = [
         f'<h1>{title}</h1>',
         f'<p class="source">{source_url}</p>',
         '<hr/>',
     ]
 
-    # ── كتلة آيات المصحف (إن وُجدت)
     quran_block = parsed.get("quran_block", "")
     if quran_block:
         parts.append(quran_block)
         parts.append('<hr/>')
 
-    text_html  = parsed.get("text_html", "")
-    footnotes  = parsed.get("footnotes", [])
+    text_html = parsed.get("text_html", "")
+    footnotes = parsed.get("footnotes", [])
 
     if text_html:
         parts.append(text_html)
@@ -413,7 +368,6 @@ def build_page_html(title, source_url, parsed):
         parts.append('</div>')
 
     return "\n".join(parts)
-
 
 def wrap_xhtml(title, body_html, extra_css=""):
     return (
@@ -435,40 +389,7 @@ def wrap_xhtml(title, body_html, extra_css=""):
 # حفظ EPUB
 # ══════════════════════════════════════════════
 
-def build_qcf_css(font_pages: set[int]) -> str:
-    """يبني @font-face لكل صفحة مصحف مستخدمة."""
-    lines = []
-    for pnum in sorted(font_pages):
-        lines.append(
-            f'@font-face {{\n'
-            f'  font-family: "QCF_P{pnum}";\n'
-            f'  src: url("../fonts/QCF_P{pnum}.ttf") format("truetype");\n'
-            f'}}\n'
-            f'.qcf-pg{pnum} {{\n'
-            f'  font-family: "QCF_P{pnum}", "Amiri Quran", serif;\n'
-            f'  font-size: 1.6em;\n'
-            f'  line-height: 2.2;\n'
-            f'}}'
-        )
-    if lines:
-        lines.append(
-            '.qpage-block {\n'
-            '  text-align: justify;\n'
-            '  direction: rtl;\n'
-            '  margin: 1em 0;\n'
-            '  padding: 0.5em;\n'
-            '  background: #f7f4ef;\n'
-            '  border-right: 3px solid #6a8a3a;\n'
-            '}'
-        )
-    return "\n\n".join(lines)
-
-
 def save_epub(book_data, session):
-    """
-    book_data: [{"surah_title", "surah_num", "surah_url", "intro", "sections": [...]}]
-    كل section: {"title", "url", "text_html", "footnotes"}
-    """
     os.makedirs(OUT_DIR, exist_ok=True)
     book = epub.EpubBook()
     book.set_identifier("dorar-tafseer-001")
@@ -478,77 +399,82 @@ def save_epub(book_data, session):
     book.set_direction("rtl")
 
     css = epub.EpubItem(
-        uid="style",
-        file_name="style/main.css",
-        media_type="text/css",
-        content=ARABIC_CSS.encode("utf-8"),
+        uid="style", file_name="style/main.css",
+        media_type="text/css", content=ARABIC_CSS.encode("utf-8"),
     )
     book.add_item(css)
 
-    # ── جلب خطوط QCF وتضمينها
-    all_font_pages: set[int] = set()
+    # ── خطوط QCF
+    all_font_pages: set = set()
     for entry in book_data:
         all_font_pages |= entry.get("font_pages", set())
 
     for pnum in sorted(all_font_pages):
         font_bytes = fetch_qcf_font(session, pnum)
         if font_bytes:
-            font_item = epub.EpubItem(
+            book.add_item(epub.EpubItem(
                 uid        = f"font_qcf_{pnum}",
                 file_name  = f"fonts/QCF_P{pnum}.ttf",
                 media_type = "font/truetype",
                 content    = font_bytes,
-            )
-            book.add_item(font_item)
+            ))
 
-    # ── CSS إضافي لخطوط QCF
+    qcf_css = None
     if all_font_pages:
         qcf_css = epub.EpubItem(
-            uid        = "style_qcf",
-            file_name  = "style/qcf.css",
-            media_type = "text/css",
-            content    = build_qcf_css(all_font_pages).encode("utf-8"),
+            uid="style_qcf", file_name="style/qcf.css",
+            media_type="text/css",
+            content=build_qcf_css(all_font_pages).encode("utf-8"),
         )
         book.add_item(qcf_css)
-    else:
-        qcf_css = None
+
+    extra_css_link = '<link rel="stylesheet" href="../style/qcf.css" type="text/css"/>' if qcf_css else ""
 
     spine = ["nav"]
     toc   = []
 
     for entry in book_data:
-        snum   = entry["surah_num"]
-        stitle = entry["surah_title"]
-        surl   = entry["surah_url"]
-        intro  = entry["intro"]
+        snum     = entry["surah_num"]
+        stitle   = entry["surah_title"]
+        surl     = entry["surah_url"]
+        intro    = entry["intro"]
         sections = entry["sections"]
 
-        surah_pages = []  # EpubHtml items لهذه السورة
+        surah_items = []
 
-        # ── صفحة التعريف
-        intro_fname = f"s{snum:03d}_intro.xhtml"
-        intro_html  = build_page_html(f"{stitle} — تعريف السورة", surl, intro)
-        intro_item  = epub.EpubHtml(title=f"{stitle} — تعريف", file_name=intro_fname, lang="ar", direction="rtl")
-        intro_item.content = wrap_xhtml(f"{stitle} — تعريف", intro_html)
+        # صفحة التعريف
+        intro_html = build_page_html(f"{stitle} — تعريف السورة", surl, intro)
+        intro_item = epub.EpubHtml(
+            title=f"{stitle} — تعريف",
+            file_name=f"s{snum:03d}_intro.xhtml",
+            lang="ar", direction="rtl",
+        )
+        intro_item.content = wrap_xhtml(f"{stitle} — تعريف", intro_html, extra_css_link)
         intro_item.add_item(css)
+        if qcf_css:
+            intro_item.add_item(qcf_css)
         book.add_item(intro_item)
         spine.append(intro_item)
-        surah_pages.append(intro_item)
+        surah_items.append(intro_item)
 
-        # ── صفحة لكل مقطع
+        # صفحة لكل مقطع
         for i, sec in enumerate(sections, 1):
-            fname    = f"s{snum:03d}_sec{i:03d}.xhtml"
             sec_html = build_page_html(sec["title"], sec["url"], sec)
-            item     = epub.EpubHtml(title=sec["title"], file_name=fname, lang="ar", direction="rtl")
-            item.content = wrap_xhtml(sec["title"], sec_html)
+            item     = epub.EpubHtml(
+                title=sec["title"],
+                file_name=f"s{snum:03d}_sec{i:03d}.xhtml",
+                lang="ar", direction="rtl",
+            )
+            item.content = wrap_xhtml(sec["title"], sec_html, extra_css_link)
             item.add_item(css)
+            if qcf_css:
+                item.add_item(qcf_css)
             book.add_item(item)
             spine.append(item)
-            surah_pages.append(item)
+            surah_items.append(item)
 
-        # ── إدخال الفهرس: السورة كقسم، صفحاتها كروابط فرعية
-        sub_links = [epub.Link(p.file_name, p.title, p.file_name) for p in surah_pages]
-        toc.append((epub.Section(stitle, href=intro_fname), sub_links))
+        sub_links = [epub.Link(p.file_name, p.title, p.file_name) for p in surah_items]
+        toc.append((epub.Section(stitle, href=f"s{snum:03d}_intro.xhtml"), sub_links))
 
     book.toc   = toc
     book.spine = spine
@@ -600,16 +526,16 @@ if __name__ == "__main__":
             if not html_surah:
                 continue
 
-            intro     = extract_content(html_surah)
-            intro["quran_block"] = ""   # صفحة التعريف لا تحتوي آيات مصحف
-            first_url = get_first_section_link(html_surah, snum)
+            intro                = extract_content(html_surah)
+            intro["quran_block"] = ""
+            first_url            = get_first_section_link(html_surah, snum)
             print(f"  تعريف: {len(intro['text_html'])} حرف")
 
-            sections   = []
-            all_font_pages: set[int] = set()
-            next_url   = first_url
-            visited    = set()
-            sec_idx    = 1
+            sections        = []
+            all_font_pages  = set()
+            next_url        = first_url
+            visited         = set()
+            sec_idx         = 1
 
             while next_url and next_url not in visited:
                 visited.add(next_url)
@@ -617,9 +543,9 @@ if __name__ == "__main__":
                 time.sleep(DELAY)
                 if not html_sec:
                     break
-                title  = get_page_title(html_sec)
-                parsed = extract_content(html_sec)
-                qblock, fpages = extract_quran_block(html_sec, session)
+                title           = get_page_title(html_sec)
+                parsed          = extract_content(html_sec)
+                qblock, fpages  = extract_quran_block(html_sec)
                 parsed["quran_block"] = qblock
                 all_font_pages |= fpages
                 print(f"    [{sec_idx}] {title[:50]}  →  {len(parsed['text_html'])} حرف"
@@ -631,12 +557,12 @@ if __name__ == "__main__":
             print(f"  → {len(sections)} مقطع  |  {len(all_font_pages)} خط QCF")
 
             book_data.append({
-                "surah_num"    : snum,
-                "surah_title"  : stitle,
-                "surah_url"    : surl,
-                "intro"        : intro,
-                "sections"     : sections,
-                "font_pages"   : all_font_pages,
+                "surah_num"  : snum,
+                "surah_title": stitle,
+                "surah_url"  : surl,
+                "intro"      : intro,
+                "sections"   : sections,
+                "font_pages" : all_font_pages,
             })
 
         print("\n④ بناء EPUB...")
