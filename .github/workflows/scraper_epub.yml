@@ -29,21 +29,30 @@ jobs:
       - name: Run scraper
         env:
           TEST_SURAHS: ${{ github.event.inputs.test_surahs || 'None' }}
-        run: python scraper_epub.py
+        run: |
+          python scraper_epub.py
+          echo "exit_code=$?" >> $GITHUB_ENV
+
+      - name: Check output
+        run: |
+          echo "=== محتوى مجلد المخرجات ==="
+          ls -lah dorar_tafseer_epub/ 2>/dev/null || echo "المجلد غير موجود"
+          echo "=== حجم الملف ==="
+          du -sh dorar_tafseer_epub/*.epub 2>/dev/null || echo "لا يوجد EPUB"
 
       - name: Commit results
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          if [ -d "dorar_tafseer_epub" ] && [ "$(ls -A dorar_tafseer_epub)" ]; then
+          if [ -f "dorar_tafseer_epub/موسوعة_التفسير.epub" ]; then
             git add dorar_tafseer_epub/
-            git diff --cached --quiet || (
+            git diff --cached --quiet && echo "لا تغييرات للـ commit" || (
               git commit -m "update: تحديث ملف EPUB"
               git pull origin main --no-rebase -X ours
               git push
             )
           else
-            echo "⚠️ لا يوجد مخرجات — تحقق من لوج الكود"
+            echo "⚠️ الملف غير موجود — راجع لوج خطوة Run scraper"
             exit 1
           fi
         env:
