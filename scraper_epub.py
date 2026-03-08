@@ -31,10 +31,10 @@ body {
     color: #1a1a1a;
 }
 
-h1 { font-size: 1.6em; text-align: right; border-bottom: 2px solid #444; padding-bottom: 0.3em; margin-top: 1em; }
-h2 { font-size: 1.3em; text-align: right; color: #2c2c2c; margin-top: 1.5em; }
-h3 { font-size: 1.1em; text-align: right; color: #3a3a3a; margin-top: 1em; }
-h4 { font-size: 1em;   text-align: right; color: #555;    margin-top: 0.8em; }
+h1 { font-size: 1em; text-align: right; border-bottom: 2px solid #444; padding-bottom: 0.3em; margin-top: 1em; font-weight: bold; }
+h2 { font-size: 1em; text-align: right; color: #2c2c2c; margin-top: 1.5em; font-weight: bold; }
+h3 { font-size: 1em; text-align: right; color: #3a3a3a; margin-top: 1em; font-weight: bold; }
+h4 { font-size: 1em; text-align: right; color: #555;    margin-top: 0.8em; font-weight: bold; }
 
 p { margin: 0.6em 0; }
 
@@ -184,7 +184,7 @@ def build_qcf_css(font_pages: set) -> str:
             f'}}\n'
             f'.qcf-pg{pnum} {{\n'
             f'  font-family: "QCF_P{pnum}", "Amiri Quran", serif;\n'
-            f'  font-size: 1.6em;\n'
+            f'  font-size: 1em;\n'
             f'  line-height: 2.2;\n'
             f'}}'
         )
