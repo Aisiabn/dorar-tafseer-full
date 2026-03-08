@@ -52,7 +52,7 @@ jobs:
               git push
             )
           else
-            echo "⚠️ المل غير موجود — راجع لوج خطوة Run scraper"
+            echo "⚠️ الملف غير موجود — راجع لوج خطوة Run scraper"
             exit 1
           fi
         env:
