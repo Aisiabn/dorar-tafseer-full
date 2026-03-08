@@ -7,7 +7,7 @@ BASE      = "https://dorar.net"
 INDEX     = "https://dorar.net/tafseer"
 DELAY     = 1.0
 OUT_DIR   = "dorar_tafseer_epub"
-EPUB_FILE = os.path.join(OUT_DIR, "موسوعة_التفسير.epub")
+EPUB_FILE = os.path.join(OUT_DIR, "موسوعة_التفسير_بالخط_العثماني.epub")
 
 TEST_SURAHS = None if os.environ.get("TEST_SURAHS") == "None" else (
     int(os.environ["TEST_SURAHS"]) if os.environ.get("TEST_SURAHS") else None
